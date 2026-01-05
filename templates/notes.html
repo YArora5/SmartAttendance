@@ -1,0 +1,20 @@
+{% extends "layout_student.html" %}
+{% block content %}
+
+<h2>Notes</h2>
+
+{% if files|length == 0 %}
+<p>No notes uploaded yet.</p>
+{% else %}
+<ul>
+{% for file in files %}
+    <li>
+        <a href="/view-pdf/{{ file }}" target="_blank">
+            📘 {{ file.replace("_"," ").replace(".pdf","") }}
+        </a>
+    </li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% endblock %}

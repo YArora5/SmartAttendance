@@ -1,0 +1,15 @@
+{% extends "layout_student.html" %}
+{% block content %}
+
+<h2>Announcements</h2>
+
+{% for a in announcements %}
+<div class="card">
+    <h4>{{ a.title }}</h4>
+    <p>{{ a.description }}</p>
+</div>
+{% else %}
+<p>No announcements</p>
+{% endfor %}
+
+{% endblock %}

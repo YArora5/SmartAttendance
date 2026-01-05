@@ -1,0 +1,25 @@
+{% extends "layout_student.html" %}
+{% block content %}
+
+<h2>Curriculum / Syllabus</h2>
+
+<table border="1" cellpadding="12" style="width:80%; background:white;">
+<tr>
+    <th>Subject</th>
+    <th>PDF</th>
+</tr>
+
+{% for subject, pdf in syllabus.items() %}
+<tr>
+    <td>{{ subject }}</td>
+    <td>
+        <a href="/view-pdf/{{ pdf }}" target="_blank">
+            📄 Download / View
+        </a>
+    </td>
+</tr>
+{% endfor %}
+
+</table>
+
+{% endblock %}

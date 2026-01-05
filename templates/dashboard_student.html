@@ -1,0 +1,11 @@
+{% extends "layout_student.html" %}
+{% block content %}
+
+<h2>Welcome {{ student.name }}</h2>
+
+<div class="card">
+    <h3>Today's Status</h3>
+    <p style="font-size:20px;">{{ today_status }}</p>
+</div>
+
+{% endblock %}
