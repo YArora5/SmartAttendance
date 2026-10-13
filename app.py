@@ -1,5 +1,10 @@
 from flask import Flask, render_template, request, redirect, session, send_from_directory
+from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+import hmac
 import sqlite3, json, os, random, datetime
+
+load_dotenv()
 
 try:
     import cv2
@@ -7,7 +12,13 @@ except:
     cv2 = None
 
 app = Flask(__name__)
-app.secret_key = "college_secret_key"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY")
+if not app.secret_key:
+    raise RuntimeError("Set FLASK_SECRET_KEY in your local environment or .env file.")
+
+TEACHER_USERNAME = os.environ.get("TEACHER_USERNAME", "")
+TEACHER_PASSWORD = os.environ.get("TEACHER_PASSWORD", "")
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
 # ================= FOLDERS =================
 os.makedirs("uploads", exist_ok=True)
@@ -101,10 +112,14 @@ def student_attendance():
 
 @app.route("/routine")
 def routine():
+    if "student" not in session and "teacher" not in session:
+        return redirect("/login/student")
     return render_template("routine.html")
 
 @app.route("/activity")
 def activity():
+    if "student" not in session and "teacher" not in session:
+        return redirect("/login/student")
     return render_template("activity.html",
         activity=random.choice([
             "Revise notes",
@@ -116,16 +131,22 @@ def activity():
 
 @app.route("/notes")
 def notes():
+    if "student" not in session and "teacher" not in session:
+        return redirect("/login/student")
     files = os.listdir("notes")
     return render_template("notes.html", files=files)
 
 @app.route("/announcements")
 def announcements():
+    if "student" not in session and "teacher" not in session:
+        return redirect("/login/student")
     data = load_json("announcements.json", [])
     return render_template("announcements.html", announcements=data)
 
 @app.route("/curriculum")
 def curriculum():
+    if "student" not in session and "teacher" not in session:
+        return redirect("/login/student")
     syllabus = load_json("syllabus.json", {})
     return render_template("curriculum.html", syllabus=syllabus)
 
@@ -133,7 +154,9 @@ def curriculum():
 @app.route("/login/teacher", methods=["GET","POST"])
 def login_teacher():
     if request.method == "POST":
-        if request.form["username"]=="admin" and request.form["password"]=="1234":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if TEACHER_USERNAME and TEACHER_PASSWORD and hmac.compare_digest(username, TEACHER_USERNAME) and hmac.compare_digest(password, TEACHER_PASSWORD):
             session.clear()
             session["teacher"] = True
             return redirect("/teacher/dashboard")
@@ -198,6 +221,8 @@ def mark_attendance():
 # ================= TEACHER EXTRA =================
 @app.route("/teacher/monthly-graph")
 def teacher_monthly_graph():
+    if "teacher" not in session:
+        return redirect("/login/teacher")
     conn = sqlite3.connect("attendance.db")
     c = conn.cursor()
     c.execute("SELECT date FROM attendance")
@@ -216,13 +241,20 @@ def teacher_monthly_graph():
 
 @app.route("/upload-syllabus", methods=["GET","POST"])
 def upload_syllabus():
+    if "teacher" not in session:
+        return redirect("/login/teacher")
     if request.method=="POST":
         sub = request.form["subject"]
-        file = request.files["file"]
-        file.save("uploads/"+file.filename)
+        file = request.files.get("file")
+        if not file or not file.filename:
+            return "Please select a file", 400
+        filename = secure_filename(file.filename)
+        if not filename:
+            return "Invalid filename", 400
+        file.save(os.path.join("uploads", filename))
 
         data = load_json("syllabus.json",{})
-        data[sub] = file.filename
+        data[sub] = filename
         save_json("syllabus.json",data)
 
         return redirect("/curriculum")
@@ -230,14 +262,23 @@ def upload_syllabus():
 
 @app.route("/teacher/upload-notes", methods=["GET","POST"])
 def upload_notes():
+    if "teacher" not in session:
+        return redirect("/login/teacher")
     if request.method=="POST":
-        file = request.files["file"]
-        file.save("notes/"+file.filename)
+        file = request.files.get("file")
+        if not file or not file.filename:
+            return "Please select a file", 400
+        filename = secure_filename(file.filename)
+        if not filename:
+            return "Invalid filename", 400
+        file.save(os.path.join("notes", filename))
         return redirect("/teacher/dashboard")
     return render_template("upload_notes.html")
 
 @app.route("/teacher/add-announcement", methods=["GET","POST"])
 def add_announcement():
+    if "teacher" not in session:
+        return redirect("/login/teacher")
     if request.method=="POST":
         data = load_json("announcements.json",[])
         data.append({
@@ -256,9 +297,14 @@ def logout():
 
 @app.route("/view-pdf/<name>")
 def view_pdf(name):
-    if os.path.exists("uploads/"+name):
+    if "student" not in session and "teacher" not in session:
+        return redirect("/login/student")
+    name = secure_filename(name)
+    if not name:
+        return "File not found", 404
+    if os.path.exists(os.path.join("uploads", name)):
         return send_from_directory("uploads",name)
-    if os.path.exists("notes/"+name):
+    if os.path.exists(os.path.join("notes", name)):
         return send_from_directory("notes",name)
     return "File not found",404
 
