@@ -1,0 +1,4 @@
+Flask
+opencv-contrib-python
+numpy
+python-dotenv
