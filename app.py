@@ -190,6 +190,10 @@ def mark_attendance():
 
     while True:
         ret, frame = cam.read()
+        if not ret or frame is None:
+            cam.release()
+            cv2.destroyAllWindows()
+            return "Unable to read from webcam", 503
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray,1.3,5)
 
@@ -197,13 +201,18 @@ def mark_attendance():
             label, _ = recognizer.predict(gray[y:y+h, x:x+w])
 
             now = datetime.datetime.now()
+            student_id = str(label)
+            today = now.strftime("%Y-%m-%d")
             conn = sqlite3.connect("attendance.db")
             c = conn.cursor()
-            c.execute(
-                "INSERT INTO attendance(student_id,date,time) VALUES(?,?,?)",
-                (str(label), now.strftime("%Y-%m-%d"), now.strftime("%H:%M:%S"))
-            )
-            conn.commit()
+            c.execute("SELECT 1 FROM attendance WHERE student_id=? AND date=? LIMIT 1", (student_id, today))
+            already_marked = c.fetchone() is not None
+            if not already_marked:
+                c.execute(
+                    "INSERT INTO attendance(student_id,date,time) VALUES(?,?,?)",
+                    (student_id, today, now.strftime("%H:%M:%S"))
+                )
+                conn.commit()
             conn.close()
 
             cam.release()
