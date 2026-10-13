@@ -1,20 +1,31 @@
 import cv2
 import os
 
-student_id = input("Enter Student ID: ")
+student_id = input("Enter Student ID (digits only): ").strip()
+if not student_id.isdigit():
+    raise SystemExit("Student ID must contain digits only.")
 
-dataset_path = "dataset/" + student_id
+dataset_path = os.path.join("dataset", student_id)
 os.makedirs(dataset_path, exist_ok=True)
 
 cam = cv2.VideoCapture(0)
+if not cam.isOpened():
+    raise SystemExit("Could not open webcam. Check camera permissions and connection.")
+
 face_detector = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
+if face_detector.empty():
+    cam.release()
+    raise SystemExit("Could not load the OpenCV face detector.")
 
 count = 0
 
 while True:
     ret, frame = cam.read()
+    if not ret or frame is None:
+        print("Could not read a frame from the webcam.")
+        break
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_detector.detectMultiScale(gray, 1.3, 5)
 
