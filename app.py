@@ -133,7 +133,7 @@ def curriculum():
 @app.route("/login/teacher", methods=["GET","POST"])
 def login_teacher():
     if request.method == "POST":
-        if request.form["username"]=="admin" and request.form["password"]=="1234":
+        if request.form["username"]=="your username" and request.form["password"]=="your password":
             session.clear()
             session["teacher"] = True
             return redirect("/teacher/dashboard")
